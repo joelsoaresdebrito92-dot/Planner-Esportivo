@@ -1,0 +1,5 @@
+{
+  "name": "BetMaster Planner",
+  "description": "Um planejador de apostas esportivas sofisticado com calendário mensal, suporte para 3 jogos diários e insights inteligentes via IA Gemini.",
+  "requestFramePermissions": []
+}
