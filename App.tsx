@@ -163,8 +163,13 @@ const App: React.FC = () => {
     <div className="min-h-screen p-4 md:p-8 max-w-[1500px] mx-auto flex flex-col gap-6 pb-32">
       <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-sky-700 to-blue-800 bg-clip-text text-transparent flex items-center gap-2">
-            <Trophy className="text-blue-700" /> BetMaster Planner
+          <h1 
+            className="text-3xl font-bold text-black flex items-center gap-2"
+            style={{ 
+              textShadow: '-1px -1px 0 #0284c7, 1px -1px 0 #0284c7, -1px 1px 0 #0284c7, 1px 1px 0 #0284c7' 
+            }}
+          >
+            <Trophy className="text-blue-700 shrink-0" style={{ filter: 'drop-shadow(0 0 1px #0284c7)' }} /> BetMaster Planner
           </h1>
           <p className="text-sky-700 text-sm mt-1 font-medium">Sua estratégia em um só lugar.</p>
         </div>
