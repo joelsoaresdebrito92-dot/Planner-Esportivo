@@ -1,5 +1,4 @@
-
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { 
   format, 
   addMonths, 
@@ -25,10 +24,13 @@ import {
   XCircle,
   Share2,
   Calendar as CalendarIcon,
-  Gamepad2,
   Save,
   Check,
-  Plus
+  Plus,
+  Download,
+  Upload,
+  Settings,
+  Info
 } from 'lucide-react';
 import { AppData, DayPlan, GameEntry } from './types';
 import { analyzeDayPicks } from './services/geminiService';
@@ -51,6 +53,7 @@ const App: React.FC = () => {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [aiAnalysis, setAiAnalysis] = useState<string | null>(null);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     localStorage.setItem('bet_planner_data', JSON.stringify(appData));
@@ -159,50 +162,111 @@ const App: React.FC = () => {
     alert("Resumo copiado para a área de transferência!");
   };
 
+  const exportData = () => {
+    const dataStr = JSON.stringify(appData, null, 2);
+    const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
+    
+    const exportFileDefaultName = `betmaster-backup-${format(new Date(), 'yyyy-MM-dd')}.json`;
+    
+    const linkElement = document.createElement('a');
+    linkElement.setAttribute('href', dataUri);
+    linkElement.setAttribute('download', exportFileDefaultName);
+    linkElement.click();
+  };
+
+  const importData = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const json = JSON.parse(e.target?.result as string);
+        if (typeof json === 'object') {
+          setAppData(json);
+          alert("Backup importado com sucesso!");
+        }
+      } catch (err) {
+        alert("Erro ao importar arquivo. Certifique-se que é um JSON válido do BetMaster.");
+      }
+    };
+    reader.readAsText(file);
+  };
+
   return (
-    <div className="min-h-screen p-4 md:p-8 max-w-[1500px] mx-auto flex flex-col gap-6 pb-32">
-      <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h1 
-            className="text-3xl font-bold text-black flex items-center gap-2"
-            style={{ 
-              textShadow: '-1px -1px 0 #0284c7, 1px -1px 0 #0284c7, -1px 1px 0 #0284c7, 1px 1px 0 #0284c7' 
-            }}
-          >
-            <Trophy className="text-blue-700 shrink-0" style={{ filter: 'drop-shadow(0 0 1px #0284c7)' }} /> BetMaster Planner
-          </h1>
-          <p className="text-sky-700 text-sm mt-1 font-medium">Sua estratégia em um só lugar.</p>
+    <div className="min-h-screen p-4 md:p-8 max-w-[1600px] mx-auto flex flex-col gap-6 pb-32">
+      <header className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+        <div className="flex flex-col gap-1">
+          <div className="flex items-center gap-3">
+            <Trophy className="text-sky-600 w-8 h-8 md:w-10 md:h-10 shrink-0" style={{ filter: 'drop-shadow(0 0 2px #0ea5e9)' }} />
+            <h1 className="text-3xl md:text-4xl font-black text-black text-outline-blue tracking-tight">
+              BetMaster Planner
+            </h1>
+          </div>
+          <p className="text-sky-700 text-sm font-semibold flex items-center gap-2">
+            <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span>
+            Gestão Profissional de Apostas v1.0
+          </p>
         </div>
-        <div className="flex items-center gap-3 bg-white/50 backdrop-blur-sm shadow-sm border border-sky-200 p-2 rounded-xl">
-          <button 
-            onClick={() => setCurrentDate(subMonths(currentDate, 1))}
-            className="p-2 hover:bg-sky-100 rounded-lg transition-colors text-sky-800"
-          >
-            <ChevronLeft size={20} />
-          </button>
-          <span className="font-bold min-w-[140px] text-center capitalize text-sky-900">
-            {format(currentDate, 'MMMM yyyy', { locale: ptBR })}
-          </span>
-          <button 
-            onClick={() => setCurrentDate(addMonths(currentDate, 1))}
-            className="p-2 hover:bg-sky-100 rounded-lg transition-colors text-sky-800"
-          >
-            <ChevronRight size={20} />
-          </button>
+
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex items-center gap-2 bg-white shadow-sm border border-sky-200 p-1.5 rounded-2xl">
+            <button 
+              onClick={() => setCurrentDate(subMonths(currentDate, 1))}
+              className="p-2.5 hover:bg-sky-50 rounded-xl transition-all text-sky-800 active:scale-95"
+            >
+              <ChevronLeft size={22} />
+            </button>
+            <span className="font-bold min-w-[150px] text-center capitalize text-sky-950 text-lg">
+              {format(currentDate, 'MMMM yyyy', { locale: ptBR })}
+            </span>
+            <button 
+              onClick={() => setCurrentDate(addMonths(currentDate, 1))}
+              className="p-2.5 hover:bg-sky-50 rounded-xl transition-all text-sky-800 active:scale-95"
+            >
+              <ChevronRight size={22} />
+            </button>
+          </div>
+
+          <div className="flex items-center gap-2 bg-white/80 p-1.5 rounded-2xl border border-sky-200 shadow-sm">
+            <button 
+              onClick={exportData}
+              title="Exportar Backup"
+              className="p-2.5 hover:bg-sky-50 text-sky-600 rounded-xl transition-all"
+            >
+              <Download size={20} />
+            </button>
+            <button 
+              onClick={() => fileInputRef.current?.click()}
+              title="Importar Backup"
+              className="p-2.5 hover:bg-sky-50 text-sky-600 rounded-xl transition-all"
+            >
+              <Upload size={20} />
+            </button>
+            <input 
+              type="file" 
+              ref={fileInputRef} 
+              onChange={importData} 
+              accept=".json" 
+              className="hidden" 
+            />
+          </div>
         </div>
       </header>
 
       <main className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        <section className="lg:col-span-9 bg-[#020617] rounded-2xl overflow-hidden shadow-2xl border border-sky-500/30 flex flex-col">
-          <div className="hidden md:grid grid-cols-7 border-b border-sky-500/20 bg-[#0f172a]/50">
-            {['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].map(day => (
-              <div key={day} className="py-3 text-center text-[10px] font-bold text-sky-400/70 uppercase tracking-widest">
+        {/* Calendário Principal */}
+        <section className="lg:col-span-9 bg-[#020617] rounded-3xl overflow-hidden shadow-2xl border border-sky-500/30 flex flex-col">
+          <div className="hidden md:grid grid-cols-7 border-b border-sky-500/20 bg-[#0f172a]/80">
+            {['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'].map(day => (
+              <div key={day} className="py-4 text-center text-[10px] font-black text-sky-400/70 uppercase tracking-[0.2em]">
                 {day}
               </div>
             ))}
           </div>
 
-          <div className="hidden md:grid grid-cols-7">
+          {/* Desktop Grid */}
+          <div className="hidden md:grid grid-cols-7 flex-1 min-h-[700px]">
             {currentMonthDays.map((day) => {
               const dayStr = format(day, 'yyyy-MM-dd');
               const isSelected = selectedDate === dayStr;
@@ -219,35 +283,36 @@ const App: React.FC = () => {
                     setAiAnalysis(null);
                   }}
                   className={`
-                    relative min-h-[110px] md:min-h-[140px] p-3 text-left border-r border-b border-sky-500/10 transition-all flex flex-col group
-                    ${isSelected ? 'bg-sky-500/10 ring-2 ring-inset ring-sky-400/40' : 'hover:bg-white/5'}
-                    ${isOtherMonth ? 'opacity-30 bg-black/20' : ''}
+                    relative p-4 text-left border-r border-b border-sky-500/10 transition-all flex flex-col group min-h-[140px]
+                    ${isSelected ? 'bg-sky-500/10 ring-2 ring-inset ring-sky-400/40 z-10' : 'hover:bg-white/5'}
+                    ${isOtherMonth ? 'opacity-20 grayscale bg-black/40' : ''}
                   `}
                 >
-                  <span className={`text-sm font-bold mb-2 ${isToday ? 'text-white bg-sky-600 px-2 py-0.5 rounded-md inline-block shadow-[0_0_10px_rgba(2,132,199,0.5)]' : 'text-slate-400'}`}>
+                  <span className={`text-sm font-black mb-3 ${isToday ? 'text-white bg-sky-600 px-3 py-1 rounded-lg inline-block shadow-lg shadow-sky-500/40' : 'text-slate-500'}`}>
                     {format(day, 'd')}
                   </span>
                   
                   {games.length > 0 && (
-                    <div className="mt-auto space-y-1 w-full overflow-hidden">
-                      {games.slice(0, 4).map((g, idx) => (
-                        <div key={idx} className="text-[9px] md:text-[10px] truncate bg-sky-900/40 border border-sky-400/20 px-2 py-0.5 rounded text-sky-100 font-medium w-full">
-                          {g.time && <span className="text-sky-400 font-bold mr-1">{g.time}</span>}
-                          {g.match}
+                    <div className="mt-auto space-y-1.5 w-full">
+                      {games.slice(0, 3).map((g, idx) => (
+                        <div key={idx} className={`text-[10px] truncate border px-2 py-1 rounded-md font-bold w-full flex items-center justify-between ${g.status === 'win' ? 'bg-emerald-900/40 border-emerald-500/30 text-emerald-200' : g.status === 'loss' ? 'bg-red-900/40 border-red-500/30 text-red-200' : 'bg-sky-900/40 border-sky-400/20 text-sky-100'}`}>
+                          <span className="truncate">{g.match}</span>
+                          {g.time && <span className="opacity-60 ml-1 shrink-0">{g.time}</span>}
                         </div>
                       ))}
-                      {games.length > 4 && (
-                        <div className="text-[8px] text-sky-500 font-bold text-center">+{games.length - 4} mais</div>
+                      {games.length > 3 && (
+                        <div className="text-[9px] text-sky-400/80 font-black text-center pt-1">+ {games.length - 3} EVENTOS</div>
                       )}
                     </div>
                   )}
-                  {isSelected && <div className="absolute top-3 right-3 w-2.5 h-2.5 bg-sky-400 rounded-full shadow-[0_0_15px_rgba(56,189,248,0.8)]" />}
+                  {isSelected && <div className="absolute top-4 right-4 w-2 h-2 bg-sky-400 rounded-full shadow-[0_0_12px_#38bdf8]" />}
                 </button>
               );
             })}
           </div>
 
-          <div className="md:hidden flex flex-col divide-y divide-sky-500/10 max-h-[60vh] overflow-y-auto custom-scrollbar">
+          {/* Mobile List View */}
+          <div className="md:hidden flex flex-col divide-y divide-sky-500/10 max-h-[60vh] overflow-y-auto custom-scrollbar bg-slate-950">
             {currentMonthDays.filter(day => format(day, 'MM') === format(currentDate, 'MM')).map((day) => {
               const dayStr = format(day, 'yyyy-MM-dd');
               const isSelected = selectedDate === dayStr;
@@ -262,48 +327,40 @@ const App: React.FC = () => {
                     setSelectedDate(dayStr);
                     setAiAnalysis(null);
                   }}
-                  className={`p-4 transition-all ${isSelected ? 'bg-sky-500/10 border-l-4 border-sky-500' : 'active:bg-white/5'}`}
+                  className={`p-5 transition-all cursor-pointer ${isSelected ? 'bg-sky-500/10 border-l-4 border-sky-500 shadow-inner' : 'active:bg-white/5'}`}
                 >
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center gap-3">
-                      <div className={`w-10 h-10 rounded-xl flex flex-col items-center justify-center font-bold ${isToday ? 'bg-sky-600 text-white shadow-lg shadow-sky-900/40' : 'bg-slate-800 text-slate-400 border border-sky-500/20'}`}>
-                        <span className="text-[10px] uppercase leading-none opacity-70 mb-0.5">{format(day, 'EEE', { locale: ptBR })}</span>
-                        <span className="text-base leading-none">{format(day, 'd')}</span>
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-4">
+                      <div className={`w-12 h-12 rounded-2xl flex flex-col items-center justify-center font-black ${isToday ? 'bg-sky-600 text-white shadow-xl shadow-sky-900/60' : 'bg-slate-900 text-slate-500 border border-sky-500/20'}`}>
+                        <span className="text-[10px] uppercase leading-none opacity-60 mb-1">{format(day, 'EEE', { locale: ptBR })}</span>
+                        <span className="text-lg leading-none">{format(day, 'd')}</span>
                       </div>
-                      <span className={`font-semibold ${isSelected ? 'text-sky-400' : 'text-slate-300'}`}>
+                      <span className={`font-bold text-lg ${isSelected ? 'text-sky-400' : 'text-slate-300'}`}>
                         {isToday ? 'Hoje' : format(day, "EEEE", { locale: ptBR })}
                       </span>
                     </div>
                     {games.length > 0 && (
-                      <span className="bg-sky-500/20 text-sky-400 text-[10px] font-bold px-2 py-1 rounded-full border border-sky-500/30">
+                      <span className="bg-sky-500/10 text-sky-400 text-[10px] font-black px-3 py-1.5 rounded-full border border-sky-500/30">
                         {games.length} {games.length === 1 ? 'JOGO' : 'JOGOS'}
                       </span>
                     )}
                   </div>
 
-                  {games.length > 0 ? (
-                    <div className="grid grid-cols-1 gap-2 ml-1">
+                  {games.length > 0 && (
+                    <div className="grid grid-cols-1 gap-2 ml-14">
                       {games.map((g, idx) => (
-                        <div key={idx} className="flex items-center gap-3 bg-slate-900/60 border border-sky-500/10 p-2.5 rounded-lg">
-                          <div className="flex items-center gap-1.5 min-w-[50px]">
-                            <Clock size={12} className="text-sky-400" />
-                            <span className="text-xs font-bold text-sky-100">{g.time || '--:--'}</span>
+                        <div key={idx} className="flex items-center gap-4 bg-slate-900/80 border border-sky-500/10 p-3 rounded-xl">
+                          <div className="flex items-center gap-2 min-w-[55px]">
+                            <Clock size={14} className="text-sky-400" />
+                            <span className="text-xs font-black text-sky-100">{g.time || '00:00'}</span>
                           </div>
-                          <div className="h-4 w-px bg-sky-500/20" />
                           <div className="flex-1 overflow-hidden">
-                            <div className="text-[10px] text-sky-400/60 font-bold uppercase truncate">{g.league}</div>
-                            <div className="text-sm text-white font-medium truncate">{g.match}</div>
+                            <div className="text-[10px] text-sky-500/50 font-black uppercase truncate tracking-wider">{g.league}</div>
+                            <div className="text-sm text-white font-bold truncate">{g.match}</div>
                           </div>
-                          {g.status !== 'pending' && (
-                            <div className={g.status === 'win' ? 'text-emerald-400' : 'text-red-400'}>
-                              {g.status === 'win' ? <CheckCircle size={16} /> : <XCircle size={16} />}
-                            </div>
-                          )}
                         </div>
                       ))}
                     </div>
-                  ) : (
-                    <div className="ml-[52px] text-xs text-slate-400/50 italic">Nenhum jogo planejado</div>
                   )}
                 </div>
               );
@@ -311,84 +368,85 @@ const App: React.FC = () => {
           </div>
         </section>
 
-        <aside className="lg:col-span-3 flex flex-col gap-4">
-          <div className="bg-white/80 backdrop-blur-md rounded-2xl p-5 flex flex-col h-full sticky top-8 shadow-xl border border-sky-200">
-            <div className="flex items-center justify-between mb-4">
+        {/* Editor Lateral */}
+        <aside className="lg:col-span-3 flex flex-col gap-6">
+          <div className="bg-white rounded-3xl p-6 flex flex-col h-full sticky top-8 shadow-2xl border border-sky-200">
+            <div className="flex items-center justify-between mb-6">
               <div>
-                <h2 className="font-bold text-lg flex items-center gap-2 text-sky-950">
-                  <CalendarIcon size={18} className="text-sky-600" />
-                  {selectedDate ? format(parseISO(selectedDate), "dd 'de' MMM", { locale: ptBR }) : 'Dia'}
+                <h2 className="font-black text-xl flex items-center gap-2 text-slate-900">
+                  <CalendarIcon size={20} className="text-sky-600" />
+                  {selectedDate ? format(parseISO(selectedDate), "dd 'de' MMMM", { locale: ptBR }) : 'Selecione'}
                 </h2>
-                <p className="text-sky-700/60 text-[10px] mt-1 uppercase font-bold tracking-tighter">Editor Diário</p>
+                <p className="text-sky-600/60 text-[10px] mt-1 font-black uppercase tracking-widest">Painel de Eventos</p>
               </div>
-              <div className="flex gap-1">
-                <button onClick={handleShare} className="p-1.5 hover:bg-sky-100 rounded-lg text-sky-600 transition-colors">
-                  <Share2 size={16} />
+              <div className="flex gap-2">
+                <button onClick={handleShare} className="p-2.5 hover:bg-sky-50 rounded-xl text-sky-600 transition-all active:scale-90" title="Compartilhar">
+                  <Share2 size={18} />
                 </button>
-                <button onClick={handleClearDay} className="p-1.5 hover:bg-red-50 rounded-lg text-slate-400 hover:text-red-600 transition-colors">
-                  <Trash2 size={16} />
+                <button onClick={handleClearDay} className="p-2.5 hover:bg-red-50 rounded-xl text-slate-300 hover:text-red-500 transition-all active:scale-90" title="Limpar Dia">
+                  <Trash2 size={18} />
                 </button>
               </div>
             </div>
 
-            <div className="space-y-4 flex-1 overflow-y-auto custom-scrollbar pr-1 mb-4">
+            <div className="space-y-5 flex-1 overflow-y-auto custom-scrollbar pr-1 mb-6">
               {selectedDayPlan?.games.map((game, index) => (
-                <div key={game.id} className="p-3 rounded-xl bg-[#020617] border border-sky-500/30 group shadow-lg">
-                  <div className="flex items-center justify-between mb-3">
-                    <span className="text-[9px] font-bold text-sky-400 bg-sky-900/50 px-2 py-0.5 rounded-full uppercase border border-sky-500/20">Jogo {index + 1}</span>
-                    <div className="flex gap-1 items-center">
+                <div key={game.id} className="p-4 rounded-2xl bg-slate-950 border border-sky-500/20 group shadow-lg transition-all hover:border-sky-500/40">
+                  <div className="flex items-center justify-between mb-4">
+                    <span className="text-[10px] font-black text-sky-400 bg-sky-950 px-3 py-1 rounded-full border border-sky-500/30"># JOGO {index + 1}</span>
+                    <div className="flex gap-1.5">
                       <button 
                         onClick={() => handleUpdateGame(index, 'status', game.status === 'win' ? 'pending' : 'win')}
-                        className={`p-1 rounded-md transition-colors border ${game.status === 'win' ? 'bg-emerald-500 text-white border-emerald-400' : 'bg-[#0f172a] text-slate-600 hover:text-emerald-500 border-sky-500/20'}`}
+                        className={`p-1.5 rounded-lg transition-all border ${game.status === 'win' ? 'bg-emerald-500 text-white border-emerald-400' : 'bg-slate-900 text-slate-600 hover:text-emerald-500 border-sky-500/20'}`}
                       >
-                        <CheckCircle size={16} />
+                        <CheckCircle size={18} />
                       </button>
                       <button 
                         onClick={() => handleUpdateGame(index, 'status', game.status === 'loss' ? 'pending' : 'loss')}
-                        className={`p-1 rounded-md transition-colors border ${game.status === 'loss' ? 'bg-red-500 text-white border-red-400' : 'bg-[#0f172a] text-slate-600 hover:text-red-500 border-sky-500/20'}`}
+                        className={`p-1.5 rounded-lg transition-all border ${game.status === 'loss' ? 'bg-red-500 text-white border-red-400' : 'bg-slate-900 text-slate-600 hover:text-red-500 border-sky-500/20'}`}
                       >
-                        <XCircle size={16} />
+                        <XCircle size={18} />
                       </button>
                       <button 
                         onClick={() => handleRemoveGame(game.id)}
-                        className="ml-1 p-1 text-slate-500 hover:text-red-400 transition-colors"
+                        className="ml-1 p-1.5 text-slate-600 hover:text-red-400 transition-all"
                       >
-                        <Trash2 size={14} />
+                        <Trash2 size={16} />
                       </button>
                     </div>
                   </div>
                   
-                  <div className="grid grid-cols-1 gap-2.5 mb-2.5">
-                    <div className="grid grid-cols-2 gap-2">
-                       <div>
-                        <label className="text-[9px] font-bold text-sky-400/60 uppercase block mb-1 ml-1">Horário</label>
+                  <div className="space-y-3">
+                    <div className="grid grid-cols-2 gap-3">
+                       <div className="space-y-1">
+                        <label className="text-[9px] font-black text-sky-400/40 uppercase ml-1">Horário</label>
                         <input 
                           type="text" 
-                          placeholder="00:00"
+                          placeholder="Ex: 15:45"
                           value={game.time}
                           onChange={(e) => handleUpdateGame(index, 'time', e.target.value)}
-                          className="w-full bg-[#0f172a] border border-sky-500/20 rounded-lg px-3 py-1.5 text-[13px] focus:outline-none focus:border-sky-400 text-sky-50 transition-all"
+                          className="w-full bg-slate-900 border border-sky-500/10 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-sky-500/60 text-white transition-all font-bold"
                         />
                       </div>
-                      <div>
-                        <label className="text-[9px] font-bold text-sky-400/60 uppercase block mb-1 ml-1">Liga</label>
+                      <div className="space-y-1">
+                        <label className="text-[9px] font-black text-sky-400/40 uppercase ml-1">Liga</label>
                         <input 
                           type="text" 
                           placeholder="Camp"
                           value={game.league}
                           onChange={(e) => handleUpdateGame(index, 'league', e.target.value)}
-                          className="w-full bg-[#0f172a] border border-sky-500/20 rounded-lg px-3 py-1.5 text-[13px] focus:outline-none focus:border-sky-400 text-sky-50 transition-all"
+                          className="w-full bg-slate-900 border border-sky-500/10 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-sky-500/60 text-white transition-all font-bold"
                         />
                       </div>
                     </div>
-                    <div>
-                      <label className="text-[9px] font-bold text-sky-400/60 uppercase block mb-1 ml-1">Confronto</label>
+                    <div className="space-y-1">
+                      <label className="text-[9px] font-black text-sky-400/40 uppercase ml-1">Confronto</label>
                       <input 
                         type="text" 
-                        placeholder="Equipe A vs B"
+                        placeholder="Time A vs Time B"
                         value={game.match}
                         onChange={(e) => handleUpdateGame(index, 'match', e.target.value)}
-                        className="w-full bg-[#0f172a] border border-sky-500/20 rounded-lg px-3 py-1.5 text-[13px] focus:outline-none focus:border-sky-400 text-sky-50 transition-all"
+                        className="w-full bg-slate-900 border border-sky-500/10 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-sky-500/60 text-white transition-all font-bold"
                       />
                     </div>
                   </div>
@@ -397,47 +455,76 @@ const App: React.FC = () => {
 
               <button 
                 onClick={handleAddGame}
-                className="w-full py-3 border-2 border-dashed border-sky-200 rounded-xl text-sky-400 hover:text-sky-600 hover:border-sky-400 hover:bg-sky-50 transition-all flex items-center justify-center gap-2 font-bold text-xs"
+                className="w-full py-4 border-2 border-dashed border-sky-200 rounded-2xl text-sky-400 hover:text-sky-600 hover:border-sky-400 hover:bg-sky-50 transition-all flex items-center justify-center gap-3 font-black text-xs group"
               >
-                <Plus size={16} />
-                Adicionar Novo Jogo
+                <Plus size={20} className="group-hover:rotate-90 transition-transform" />
+                ADICIONAR EVENTO
               </button>
             </div>
 
-            <div className="mt-auto pt-4 border-t border-sky-100">
-              {aiAnalysis ? (
-                <div className="bg-sky-50 border border-sky-200 rounded-xl p-3 mb-4">
-                  <div className="flex items-center gap-2 mb-1.5 text-sky-700">
-                    <Sparkles size={14} />
-                    <span className="text-[9px] font-bold uppercase tracking-wider">Insights IA</span>
+            <div className="mt-auto space-y-4 pt-6 border-t border-sky-100">
+              {aiAnalysis && (
+                <div className="bg-sky-50/80 border border-sky-200 rounded-2xl p-4 animate-in fade-in slide-in-from-bottom-2">
+                  <div className="flex items-center gap-2 mb-2 text-sky-700">
+                    <Sparkles size={16} className="animate-pulse" />
+                    <span className="text-[10px] font-black uppercase tracking-wider">Análise BetMaster AI</span>
                   </div>
-                  <p className="text-[11px] text-sky-900 leading-relaxed italic">{aiAnalysis}</p>
+                  <p className="text-[11px] text-slate-700 leading-relaxed font-medium italic">{aiAnalysis}</p>
                 </div>
-              ) : null}
+              )}
+              
               <button 
                 onClick={handleAiAnalyze}
                 disabled={isAnalyzing || !selectedDayPlan?.games.some(g => g.match)}
-                className="w-full bg-[#020617] hover:bg-slate-900 disabled:opacity-20 text-white text-xs font-bold py-3 rounded-xl flex items-center justify-center gap-2 transition-all shadow-xl group border border-sky-500/20"
+                className="w-full bg-slate-950 hover:bg-black disabled:opacity-20 text-white text-xs font-black py-4 rounded-2xl flex items-center justify-center gap-3 transition-all shadow-xl shadow-sky-900/10 border border-sky-500/30 active:scale-95 group"
               >
-                {isAnalyzing ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <><Sparkles size={16} className="text-sky-400" /> Analisar com IA</>}
+                {isAnalyzing ? (
+                  <div className="w-5 h-5 border-2 border-sky-500/30 border-t-sky-400 rounded-full animate-spin" />
+                ) : (
+                  <>
+                    <Sparkles size={18} className="text-sky-400 group-hover:scale-125 transition-transform" /> 
+                    OBTER INSIGHTS IA
+                  </>
+                )}
               </button>
+              
+              <div className="flex items-center justify-center gap-4 pt-2">
+                <a href="#" className="text-[9px] font-black text-slate-300 hover:text-sky-500 transition-colors uppercase flex items-center gap-1">
+                  <Info size={10} /> Termos
+                </a>
+                <a href="#" className="text-[9px] font-black text-slate-300 hover:text-sky-500 transition-colors uppercase flex items-center gap-1">
+                  <Settings size={10} /> Config
+                </a>
+              </div>
             </div>
           </div>
         </aside>
       </main>
 
-      <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-50 w-full px-4 max-w-xs md:max-w-none md:w-auto">
+      {/* Floating Save Button */}
+      <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-50 w-full px-4 max-w-sm md:max-w-none md:w-auto">
         <button
           onClick={handleManualSave}
           disabled={saveStatus !== 'idle'}
           className={`
-            w-full flex items-center justify-center gap-3 px-10 py-4 rounded-full font-bold text-white shadow-2xl transition-all duration-300 transform active:scale-95 border-2 border-white/20
-            ${saveStatus === 'idle' ? 'bg-sky-600 hover:bg-sky-500' : saveStatus === 'saving' ? 'bg-slate-800 cursor-wait' : 'bg-emerald-600'}
+            w-full flex items-center justify-center gap-4 px-12 py-5 rounded-3xl font-black text-white shadow-2xl transition-all duration-300 transform active:scale-95 border-2 border-white/20 uppercase tracking-widest text-sm
+            ${saveStatus === 'idle' ? 'bg-sky-600 hover:bg-sky-500' : saveStatus === 'saving' ? 'bg-slate-900 cursor-wait' : 'bg-emerald-600 shadow-emerald-500/40'}
           `}
         >
-          {saveStatus === 'idle' ? <><Save size={20} /> <span>Salvar Alterações</span></> : saveStatus === 'saving' ? <><span>Sincronizando...</span></> : <><Check size={20} /> <span>Sucesso!</span></>}
+          {saveStatus === 'idle' ? (
+            <><Save size={22} /> <span>Salvar Calendário</span></>
+          ) : saveStatus === 'saving' ? (
+            <><span>Sincronizando Dados...</span></>
+          ) : (
+            <><Check size={22} /> <span>Dados Protegidos!</span></>
+          )}
         </button>
       </div>
+
+      <footer className="mt-12 text-center text-slate-400 pb-12">
+        <p className="text-xs font-bold uppercase tracking-widest mb-1 opacity-60">© 2024 BetMaster Planner Labs</p>
+        <p className="text-[10px] italic">Aposte com responsabilidade. Este app é uma ferramenta de organização.</p>
+      </footer>
     </div>
   );
 };
